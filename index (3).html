@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Caro 30×30 — Siêu Khó</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-1:#0a0e1a;
+    --bg-2:#0e1424;
+    --panel:rgba(22,28,46,0.62);
+    --panel-border:rgba(120,150,255,0.18);
+    --cyan:#4cd3ff;
+    --cyan-soft:rgba(76,211,255,0.35);
+    --magenta:#ff4fa3;
+    --magenta-soft:rgba(255,79,163,0.35);
+    --danger:#ff6a3d;
+    --danger-soft:rgba(255,106,61,0.4);
+    --text:#e8ecf7;
+    --text-dim:#8a93b3;
+    --grid-line: rgba(140,170,255,0.14);
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    min-height:100%;
+    background:
+      radial-gradient(1100px 650px at 12% -8%, rgba(76,211,255,0.10), transparent 60%),
+      radial-gradient(900px 700px at 105% 8%, rgba(255,79,163,0.10), transparent 55%),
+      linear-gradient(160deg, var(--bg-1), var(--bg-2));
+    color:var(--text);
+    font-family:'Inter',sans-serif;
+    display:flex;
+    justify-content:center;
+    padding:26px 14px 50px;
+    position:relative;
+  }
+  body.danger-mode{
+    background:
+      radial-gradient(1100px 650px at 12% -8%, rgba(255,106,61,0.14), transparent 60%),
+      radial-gradient(900px 700px at 105% 8%, rgba(255,79,163,0.10), transparent 55%),
+      linear-gradient(160deg, var(--bg-1), var(--bg-2));
+  }
+  .app{width:100%;max-width:1040px;}
+  header{text-align:center;margin-bottom:20px;}
+  .eyebrow{
+    font-family:'JetBrains Mono',monospace;
+    font-size:12px;
+    letter-spacing:3px;
+    text-transform:uppercase;
+    color:var(--cyan);
+    margin:0 0 8px;
+    transition:color 0.3s ease;
+  }
+  body.danger-mode .eyebrow{color:var(--danger);}
+  h1{
+    font-family:'Space Grotesk',sans-serif;
+    font-weight:700;
+    font-size:clamp(32px,5.4vw,50px);
+    margin:0;
+    letter-spacing:1px;
+    background:linear-gradient(90deg,var(--cyan),var(--magenta));
+    -webkit-background-clip:text;
+    background-clip:text;
+    color:transparent;
+  }
+  .sub{
+    font-family:'JetBrains Mono',monospace;
+    font-size:13px;
+    color:var(--text-dim);
+    margin-top:8px;
+    letter-spacing:1px;
+  }
+  .layout{
+    display:flex;
+    gap:22px;
+    align-items:flex-start;
+    justify-content:center;
+    flex-wrap:wrap;
+  }
+  .board-shell{
+    position:relative;
+    border-radius:16px;
+    padding:2px;
+    background:linear-gradient(135deg, var(--cyan-soft), var(--magenta-soft));
+    transition:background 0.4s ease;
+  }
+  body.danger-mode .board-shell{
+    background:linear-gradient(135deg, var(--danger-soft), var(--magenta-soft));
+    animation:dangerPulse 1.8s ease-in-out infinite;
+  }
+  @keyframes dangerPulse{
+    0%,100%{box-shadow:0 0 22px rgba(255,106,61,0.25);}
+    50%{box-shadow:0 0 38px rgba(255,106,61,0.5);}
+  }
+  .board-frame{
+    position:relative;
+    border-radius:14px;
+    background:rgba(10,14,26,0.92);
+    padding:14px;
+    overflow:auto;
+    max-width:min(720px, 88vw);
+    max-height:78vh;
+  }
+  .board-scale-wrap{
+    display:inline-block;
+    transform-origin: top left;
+  }
+  canvas{display:block;image-rendering:optimizeSpeed;}
+  .zoom-row{
+    display:flex;
+    gap:6px;
+    justify-content:center;
+    margin-top:10px;
+  }
+  .zoom-btn{
+    width:32px;height:32px;
+    border-radius:8px;
+    border:1px solid var(--panel-border);
+    background:rgba(255,255,255,0.04);
+    color:var(--text);
+    font-size:16px;
+    cursor:pointer;
+  }
+  .zoom-btn:hover{background:rgba(255,255,255,0.09);}
+
+  .win-overlay{
+    position:absolute;
+    inset:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:rgba(6,9,18,0.55);
+    backdrop-filter:blur(3px);
+    opacity:0;
+    pointer-events:none;
+    transition:opacity 0.25s ease;
+    border-radius:14px;
+  }
+  .win-overlay.show{opacity:1;pointer-events:auto;}
+  .win-card{
+    text-align:center;
+    padding:26px 34px;
+    border-radius:16px;
+    background:rgba(16,20,34,0.85);
+    border:1px solid var(--panel-border);
+    transform:scale(0.7);
+    opacity:0;
+    transition:transform 0.35s cubic-bezier(.2,1.6,.4,1), opacity 0.2s ease;
+    box-shadow:0 20px 60px rgba(0,0,0,0.5);
+  }
+  .win-overlay.show .win-card{transform:scale(1);opacity:1;}
+  .win-title{
+    font-family:'Space Grotesk',sans-serif;
+    font-weight:700;
+    font-size:clamp(24px,4vw,34px);
+    background:linear-gradient(90deg,var(--cyan),var(--magenta));
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+    margin-bottom:4px;
+  }
+  .win-sub{
+    font-family:'JetBrains Mono',monospace;
+    font-size:13px;
+    color:var(--text-dim);
+    margin-bottom:18px;
+  }
+  .btn-replay{
+    font-family:'Space Grotesk',sans-serif;
+    font-weight:700;
+    font-size:15px;
+    border:none;
+    padding:11px 26px;
+    border-radius:999px;
+    background:linear-gradient(90deg,var(--cyan),var(--magenta));
+    color:#0a0e1a;
+    cursor:pointer;
+  }
+  .btn-replay:hover{filter:brightness(1.1);}
+
+  .panel{width:300px;max-width:100%;display:flex;flex-direction:column;gap:14px;}
+  .card{
+    background:var(--panel);
+    border:1px solid var(--panel-border);
+    border-radius:14px;
+    padding:16px 18px;
+    backdrop-filter:blur(10px);
+  }
+  .card h2{
+    margin:0 0 10px;
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;
+    font-weight:700;
+    text-transform:uppercase;
+    letter-spacing:1.6px;
+    color:var(--text-dim);
+  }
+  .seg{
+    display:flex;
+    flex-wrap:wrap;
+    background:rgba(255,255,255,0.04);
+    border-radius:10px;
+    padding:4px;
+    gap:4px;
+  }
+  .seg button{
+    flex:1 1 45%;
+    min-width:70px;
+    border:none;
+    background:transparent;
+    padding:9px 6px;
+    border-radius:8px;
+    font-family:'Space Grotesk',sans-serif;
+    font-weight:600;
+    font-size:13px;
+    color:var(--text-dim);
+    cursor:pointer;
+    transition:background 0.2s ease, color 0.2s ease;
+  }
+  .seg button.active{
+    background:linear-gradient(90deg,var(--cyan),var(--magenta));
+    color:#0a0e1a;
+  }
+  .seg button.diff-super.active{
+    background:linear-gradient(90deg,var(--danger),var(--magenta));
+    color:#100604;
+  }
+  .diff-row{margin-top:10px;}
+  .hidden{display:none !important;}
+
+  .turn-indicator{display:flex;align-items:center;gap:12px;}
+  .turn-dot{
+    width:36px;height:36px;border-radius:10px;
+    display:flex;align-items:center;justify-content:center;
+    font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:16px;
+    flex-shrink:0;
+    box-shadow:0 0 18px currentColor;
+  }
+  .turn-dot.x{background:rgba(76,211,255,0.15);color:var(--cyan);}
+  .turn-dot.o{background:rgba(255,79,163,0.15);color:var(--magenta);}
+  .turn-text{font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:15px;}
+  .turn-sub{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text-dim);margin-top:2px;}
+  @keyframes glowPulse{0%,100%{box-shadow:0 0 10px currentColor;}50%{box-shadow:0 0 22px currentColor;}}
+  .turn-dot.pulse{animation:glowPulse 1.4s ease-in-out infinite;}
+
+  .score-row{display:flex;justify-content:space-between;gap:8px;}
+  .score-box{flex:1;text-align:center;padding:10px 4px;border-radius:10px;background:rgba(255,255,255,0.03);}
+  .score-box .label{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:10.5px;letter-spacing:0.6px;text-transform:uppercase;color:var(--text-dim);}
+  .score-box .value{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:24px;margin-top:2px;}
+  .score-box.x .value{color:var(--cyan);}
+  .score-box.o .value{color:var(--magenta);}
+
+  .btn-row{display:flex;gap:8px;}
+  .btn{
+    flex:1;font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:13.5px;
+    padding:10px 8px;border-radius:9px;border:1px solid var(--panel-border);
+    background:rgba(255,255,255,0.03);color:var(--text);cursor:pointer;
+    transition:background 0.15s ease, transform 0.1s ease;
+  }
+  .btn:hover:not(:disabled){background:rgba(255,255,255,0.09);transform:translateY(-1px);}
+  .btn:disabled{opacity:0.4;cursor:not-allowed;}
+  .btn.primary{background:linear-gradient(90deg,var(--cyan),var(--magenta));color:#0a0e1a;border:none;}
+  .btn.primary:hover:not(:disabled){filter:brightness(1.1);}
+
+  .foot-row{display:flex;align-items:center;justify-content:space-between;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text-dim);}
+  .sound-btn{border:none;background:transparent;font-size:19px;cursor:pointer;line-height:1;padding:4px;}
+  .thinking{font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--magenta);height:16px;}
+  body.danger-mode .thinking{color:var(--danger);}
+
+  @media (max-width:820px){
+    .layout{flex-direction:column;align-items:center;}
+    .panel{width:100%;max-width:440px;}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <p class="eyebrow">Bàn cờ 30 × 30 · năm quân liền mạch</p>
+    <h1>CARO</h1>
+    <p class="sub" id="modeSub">chế độ: 2 người chơi</p>
+  </header>
+
+  <div class="layout">
+    <div>
+      <div class="board-shell">
+        <div class="board-frame" id="boardFrame">
+          <div class="board-scale-wrap" id="scaleWrap">
+            <canvas id="board" aria-label="Bàn cờ Caro 30x30"></canvas>
+          </div>
+          <div class="win-overlay" id="winOverlay">
+            <div class="win-card">
+              <div class="win-title" id="winTitle">X THẮNG!</div>
+              <div class="win-sub" id="winSub">năm quân một mạch</div>
+              <button class="btn-replay" id="btnReplay">Chơi lại</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="zoom-row">
+        <button class="zoom-btn" id="zoomOut">−</button>
+        <button class="zoom-btn" id="zoomReset">100%</button>
+        <button class="zoom-btn" id="zoomIn">+</button>
+      </div>
+    </div>
+
+    <aside class="panel">
+      <div class="card">
+        <h2>Chế độ chơi</h2>
+        <div class="seg" id="modeSeg">
+          <button data-mode="pvp" class="active">2 người</button>
+          <button data-mode="ai">Đấu máy</button>
+        </div>
+        <div class="diff-row hidden" id="diffRow">
+          <div class="seg" id="diffSeg">
+            <button data-diff="easy">Dễ</button>
+            <button data-diff="medium" class="active">Vừa</button>
+            <button data-diff="hard">Khó</button>
+            <button data-diff="super" class="diff-super">Siêu khó</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Lượt chơi</h2>
+        <div class="turn-indicator">
+          <div class="turn-dot x pulse" id="turnDot">X</div>
+          <div>
+            <div class="turn-text" id="turnText" aria-live="polite">Lượt của Người 1</div>
+            <div class="turn-sub" id="turnSub">sẵn sàng khai cuộc</div>
+          </div>
+        </div>
+        <div class="thinking" id="thinking"></div>
+      </div>
+
+      <div class="card">
+        <h2>Bảng điểm</h2>
+        <div class="score-row">
+          <div class="score-box x"><div class="label">X thắng</div><div class="value" id="scoreX">0</div></div>
+          <div class="score-box"><div class="label">Hòa</div><div class="value" id="scoreDraw">0</div></div>
+          <div class="score-box o"><div class="label">O thắng</div><div class="value" id="scoreO">0</div></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Điều khiển</h2>
+        <div class="btn-row">
+          <button class="btn primary" id="btnNew">Ván mới</button>
+          <button class="btn" id="btnUndo">Hoàn tác</button>
+        </div>
+        <div class="foot-row" style="margin-top:10px;">
+          <button class="btn" id="btnResetScore" style="flex:none;padding:8px 12px;">Xóa điểm</button>
+          <button class="sound-btn" id="btnSound" title="Bật/tắt âm thanh">🔊</button>
+        </div>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<script>
+(function(){
+  const SIZE = 30;
+  const EMPTY = 0, X = 1, O = 2;
+  const canvas = document.getElementById('board');
+  const ctx = canvas.getContext('2d');
+  const scaleWrap = document.getElementById('scaleWrap');
+
+  let board = createBoard();
+  let moves = [];
+  let current = X;
+  let gameOver = false;
+  let winLine = null;
+  let mode = 'pvp';
+  let difficulty = 'medium';
+  let aiThinking = false;
+  let soundOn = true;
+  let scores = {x:0,o:0,draw:0};
+  let lastMoveAnim = null;
+  let zoom = 1;
+
+  const CELL = 24;
+  const PAD = 20;
+  const DRAW_SIZE = CELL*(SIZE-1);
+  const CSS_SIZE = DRAW_SIZE + PAD*2;
+  let dpr = Math.max(1, window.devicePixelRatio || 1);
+
+  function createBoard(){
+    const b=[];
+    for(let i=0;i<SIZE;i++) b.push(new Array(SIZE).fill(EMPTY));
+    return b;
+  }
+
+  function seedRand(r,c,salt){
+    const v = Math.sin(r*127.1 + c*311.7 + salt*74.3) * 43758.5453;
+    return v - Math.floor(v);
+  }
+
+  function setupCanvas(){
+    canvas.style.width = CSS_SIZE+'px';
+    canvas.style.height = CSS_SIZE+'px';
+    canvas.width = CSS_SIZE*dpr;
+    canvas.height = CSS_SIZE*dpr;
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+  }
+
+  function cellPos(i){ return PAD + i*CELL; }
+
+  function draw(){
+    ctx.clearRect(0,0,CSS_SIZE,CSS_SIZE);
+
+    ctx.strokeStyle = 'rgba(140,170,255,0.14)';
+    ctx.lineWidth = 1;
+    for(let i=0;i<SIZE;i++){
+      const p = cellPos(i);
+      ctx.beginPath(); ctx.moveTo(cellPos(0),p); ctx.lineTo(cellPos(SIZE-1),p); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(p,cellPos(0)); ctx.lineTo(p,cellPos(SIZE-1)); ctx.stroke();
+    }
+    ctx.lineWidth = 1.6;
+    ctx.strokeStyle = 'rgba(140,170,255,0.32)';
+    ctx.strokeRect(cellPos(0),cellPos(0), cellPos(SIZE-1)-cellPos(0), cellPos(SIZE-1)-cellPos(0));
+
+    const stars = [[7,7],[7,22],[22,7],[22,22],[14,14],[14,22],[22,14],[7,14],[14,7]];
+    ctx.fillStyle = 'rgba(140,170,255,0.35)';
+    stars.forEach(([r,c])=>{
+      ctx.beginPath(); ctx.arc(cellPos(c),cellPos(r), 2.2, 0, Math.PI*2); ctx.fill();
+    });
+
+    const now = performance.now();
+    for(let r=0;r<SIZE;r++){
+      for(let c=0;c<SIZE;c++){
+        if(board[r][c]===EMPTY) continue;
+        let scale=1;
+        if(lastMoveAnim && lastMoveAnim.r===r && lastMoveAnim.c===c){
+          const t = Math.min(1, (now-lastMoveAnim.start)/170);
+          scale = 0.3 + 0.7*easeOutBack(t);
+          if(t<1) requestAnimationFrame(draw);
+        }
+        drawStone(r,c,board[r][c],scale);
+      }
+    }
+
+    if(moves.length){
+      const last = moves[moves.length-1];
+      ctx.beginPath();
+      ctx.arc(cellPos(last.c), cellPos(last.r), CELL*0.46, 0, Math.PI*2);
+      ctx.strokeStyle = 'rgba(232,236,247,0.5)';
+      ctx.lineWidth = 1.3;
+      ctx.stroke();
+    }
+
+    if(winLine){
+      const a = winLine[0], b = winLine[winLine.length-1];
+      const pulse = 0.6 + 0.4*Math.sin(now/240);
+      const grad = ctx.createLinearGradient(cellPos(a.c),cellPos(a.r),cellPos(b.c),cellPos(b.r));
+      grad.addColorStop(0,'#4cd3ff');
+      grad.addColorStop(1,'#ff4fa3');
+      ctx.beginPath();
+      ctx.moveTo(cellPos(a.c),cellPos(a.r));
+      ctx.lineTo(cellPos(b.c),cellPos(b.r));
+      ctx.lineCap='round';
+      ctx.lineWidth = CELL*0.22;
+      ctx.strokeStyle = grad;
+      ctx.globalAlpha = 0.55*pulse+0.3;
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+      requestAnimationFrame(draw);
+    }
+  }
+
+  function easeOutBack(t){
+    const c1=1.70158, c3=c1+1;
+    return 1 + c3*Math.pow(t-1,3) + c1*Math.pow(t-1,2);
+  }
+
+  function drawStone(r,c,player,scale){
+    const cx = cellPos(c), cy = cellPos(r);
+    const rad = CELL*0.36*scale;
+    ctx.save();
+    ctx.translate(cx,cy);
+    const jitter = (seedRand(r,c,1)-0.5)*0.1;
+    ctx.rotate(jitter);
+    if(player===X){
+      ctx.shadowColor = '#4cd3ff';
+      ctx.shadowBlur = 10*scale;
+      ctx.strokeStyle = '#7fe3ff';
+      ctx.lineWidth = Math.max(2, CELL*0.15);
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(-rad,-rad); ctx.lineTo(rad,rad); ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(rad,-rad); ctx.lineTo(-rad,rad); ctx.stroke();
+    } else {
+      ctx.shadowColor = '#ff4fa3';
+      ctx.shadowBlur = 10*scale;
+      ctx.strokeStyle = '#ff8cc6';
+      ctx.lineWidth = Math.max(2, CELL*0.15);
+      ctx.beginPath();
+      ctx.arc(0,0,rad*0.82,0,Math.PI*2);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  const DIRS = [[1,0],[0,1],[1,1],[1,-1]];
+  function inBounds(r,c){ return r>=0 && r<SIZE && c>=0 && c<SIZE; }
+
+  function checkWin(r,c,player){
+    for(const [dx,dy] of DIRS){
+      let cells=[{r,c}];
+      let rr=r+dx, cc=c+dy;
+      while(inBounds(rr,cc) && board[rr][cc]===player){cells.push({r:rr,c:cc}); rr+=dx; cc+=dy;}
+      rr=r-dx; cc=c-dy;
+      while(inBounds(rr,cc) && board[rr][cc]===player){cells.unshift({r:rr,c:cc}); rr-=dx; cc-=dy;}
+      if(cells.length>=5) return cells;
+    }
+    return null;
+  }
+
+  function boardFull(){ return moves.length >= SIZE*SIZE; }
+
+  function placeStone(r,c,player){
+    if(gameOver || board[r][c]!==EMPTY) return false;
+    board[r][c]=player;
+    moves.push({r,c,player});
+    lastMoveAnim = {r,c,start:performance.now()};
+    playClick();
+    const win = checkWin(r,c,player);
+    if(win){ gameOver=true; winLine=win; onGameEnd(player); }
+    else if(boardFull()){ gameOver=true; onGameEnd(null); }
+    else { current = (player===X)?O:X; updateTurnUI(); }
+    draw();
+    updateUndoBtn();
+    return true;
+  }
+
+  function onGameEnd(winner){
+    if(winner===X) scores.x++;
+    else if(winner===O) scores.o++;
+    else scores.draw++;
+    updateScoreUI();
+    showWinOverlay(winner);
+    playWin(winner);
+  }
+
+  function patternScore(count, openEnds){
+    if(count>=5) return 100000;
+    if(count===4) return openEnds===2?12000: openEnds===1?1200:0;
+    if(count===3) return openEnds===2?900: openEnds===1?150:0;
+    if(count===2) return openEnds===2?40: openEnds===1?10:0;
+    if(count===1) return openEnds===2?4:1;
+    return 0;
+  }
+
+  function lineScore(r,c,player,dx,dy){
+    let count=1, openEnds=0;
+    let rr=r+dx, cc=c+dy;
+    while(inBounds(rr,cc) && board[rr][cc]===player){count++; rr+=dx; cc+=dy;}
+    if(inBounds(rr,cc) && board[rr][cc]===EMPTY) openEnds++;
+    rr=r-dx; cc=c-dy;
+    while(inBounds(rr,cc) && board[rr][cc]===player){count++; rr-=dx; cc-=dy;}
+    if(inBounds(rr,cc) && board[rr][cc]===EMPTY) openEnds++;
+    return patternScore(count, openEnds);
+  }
+
+  function evaluateCell(r,c,player){
+    board[r][c]=player;
+    let total=0;
+    for(const [dx,dy] of DIRS) total += lineScore(r,c,player,dx,dy);
+    board[r][c]=EMPTY;
+    return total;
+  }
+
+  function getCandidates(radius){
+    radius = radius || 2;
+    const set = new Set();
+    let any=false;
+    for(let r=0;r<SIZE;r++){
+      for(let c=0;c<SIZE;c++){
+        if(board[r][c]===EMPTY) continue;
+        any=true;
+        for(let dr=-radius;dr<=radius;dr++){
+          for(let dc=-radius;dc<=radius;dc++){
+            const rr=r+dr, cc=c+dc;
+            if(inBounds(rr,cc) && board[rr][cc]===EMPTY) set.add(rr+'_'+cc);
+          }
+        }
+      }
+    }
+    if(!any) return [{r:14,c:14}];
+    return Array.from(set).map(s=>{const [r,c]=s.split('_').map(Number); return {r,c};});
+  }
+
+  function baseScored(aiPlayer, humanPlayer, attackW, defenseW){
+    const candidates = getCandidates(2);
+    return candidates.map(({r,c})=>{
+      const atk = evaluateCell(r,c,aiPlayer);
+      const def = evaluateCell(r,c,humanPlayer);
+      return {r,c,s: atk*attackW + def*defenseW, atk, def};
+    }).sort((a,b)=>b.s-a.s);
+  }
+
+  function aiMove(){
+    const aiPlayer=O, humanPlayer=X;
+    let attackW=1.0, defenseW=0.9, randomness=0;
+    if(difficulty==='easy'){ attackW=1.0; defenseW=0.35; randomness=0.5; }
+    if(difficulty==='medium'){ attackW=1.0; defenseW=0.85; randomness=0.15; }
+    if(difficulty==='hard'){ attackW=1.0; defenseW=1.1; randomness=0.03; }
+    if(difficulty==='super'){ attackW=1.0; defenseW=1.25; randomness=0; }
+
+    let scored = baseScored(aiPlayer, humanPlayer, attackW, defenseW);
+
+    // immediate win short-circuit
+    if(scored[0] && scored[0].atk >= 100000) return scored[0];
+    // immediate must-block short-circuit (opponent has 5 available)
+    const mustBlock = scored.find(s=>s.def >= 100000);
+    if(mustBlock && (!scored[0] || scored[0].atk < 100000)) return mustBlock;
+
+    if((difficulty==='hard' || difficulty==='super') && scored[0].s < 90000){
+      const topK = scored.slice(0, difficulty==='super'?10:8);
+      topK.forEach(cand=>{
+        board[cand.r][cand.c]=aiPlayer;
+        const oppCands = getCandidates(2).slice(0,20).map(({r,c})=>{
+          if(r===cand.r&&c===cand.c) return {r,c,s:-1};
+          return {r,c,s:evaluateCell(r,c,humanPlayer)};
+        }).sort((a,b)=>b.s-a.s);
+        let worst = oppCands.length? oppCands[0].s : 0;
+
+        if(difficulty==='super' && oppCands.length){
+          // one more ply: simulate opponent's best reply, then AI's best follow-up
+          const topOpp = oppCands.slice(0,5);
+          let bestFollowDiff = -Infinity;
+          topOpp.forEach(opp=>{
+            if(opp.s<0) return;
+            board[opp.r][opp.c]=humanPlayer;
+            const followCands = getCandidates(2).slice(0,15);
+            let bestFollow = 0;
+            followCands.forEach(({r,c})=>{
+              const fs = evaluateCell(r,c,aiPlayer);
+              if(fs>bestFollow) bestFollow=fs;
+            });
+            board[opp.r][opp.c]=EMPTY;
+            const diff = bestFollow - opp.s;
+            if(diff>bestFollowDiff) bestFollowDiff=diff;
+          });
+          worst = worst - Math.max(0,bestFollowDiff)*0.4;
+        }
+        board[cand.r][cand.c]=EMPTY;
+        cand.refined = cand.s - worst*0.85;
+      });
+      topK.sort((a,b)=>b.refined-a.refined);
+      scored = topK.concat(scored.slice(topK.length));
+    }
+
+    if(randomness>0 && Math.random()<randomness){
+      const poolSize = difficulty==='easy'?Math.min(6,scored.length):Math.min(3,scored.length);
+      return scored[Math.floor(Math.random()*poolSize)];
+    }
+    return scored[0];
+  }
+
+  function triggerAiMove(){
+    if(gameOver || mode!=='ai' || current!==O) return;
+    aiThinking = true;
+    document.getElementById('thinking').textContent = 'máy đang tính toán…';
+    updateUndoBtn();
+    setTimeout(()=>{
+      if(gameOver){ aiThinking=false; document.getElementById('thinking').textContent=''; updateUndoBtn(); return; }
+      const move = aiMove();
+      aiThinking = false;
+      document.getElementById('thinking').textContent = '';
+      if(move) placeStone(move.r, move.c, O);
+      updateUndoBtn();
+    }, difficulty==='super' ? 550+Math.random()*350 : 380+Math.random()*260);
+  }
+
+  canvas.addEventListener('click', (e)=>{
+    if(gameOver || aiThinking) return;
+    if(mode==='ai' && current===O) return;
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = CSS_SIZE / rect.width;
+    const scaleY = CSS_SIZE / rect.height;
+    const x = (e.clientX - rect.left) * scaleX;
+    const y = (e.clientY - rect.top) * scaleY;
+    let bestR=-1,bestC=-1,bestD=Infinity;
+    for(let r=0;r<SIZE;r++){
+      for(let c=0;c<SIZE;c++){
+        const px=cellPos(c), py=cellPos(r);
+        const d=(px-x)*(px-x)+(py-y)*(py-y);
+        if(d<bestD){bestD=d;bestR=r;bestC=c;}
+      }
+    }
+    if(bestD > (CELL*0.55)*(CELL*0.55)) return;
+    ensureAudio();
+    const placedPlayer = current;
+    if(placeStone(bestR,bestC,placedPlayer)){
+      if(!gameOver && mode==='ai') triggerAiMove();
+    }
+  });
+
+  const modeSeg = document.getElementById('modeSeg');
+  const diffSeg = document.getElementById('diffSeg');
+  const diffRow = document.getElementById('diffRow');
+  const modeSub = document.getElementById('modeSub');
+
+  modeSeg.querySelectorAll('button').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      modeSeg.querySelectorAll('button').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      mode = btn.dataset.mode;
+      diffRow.classList.toggle('hidden', mode!=='ai');
+      updateModeSub();
+      newGame();
+    });
+  });
+  diffSeg.querySelectorAll('button').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      diffSeg.querySelectorAll('button').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      difficulty = btn.dataset.diff;
+      updateModeSub();
+    });
+  });
+
+  function updateModeSub(){
+    if(mode==='pvp'){ modeSub.textContent = 'chế độ: 2 người chơi'; document.body.classList.remove('danger-mode'); return; }
+    const map = {easy:'Dễ', medium:'Vừa', hard:'Khó', super:'Siêu khó'};
+    modeSub.textContent = 'chế độ: đấu máy · ' + map[difficulty];
+    document.body.classList.toggle('danger-mode', difficulty==='super');
+  }
+
+  function updateTurnUI(){
+    const dot = document.getElementById('turnDot');
+    const text = document.getElementById('turnText');
+    const sub = document.getElementById('turnSub');
+    dot.classList.remove('x','o');
+    dot.classList.add(current===X?'x':'o');
+    dot.textContent = current===X?'X':'O';
+    if(mode==='ai'){
+      text.textContent = current===X ? 'Lượt của Bạn (X)' : 'Lượt của Máy (O)';
+    } else {
+      text.textContent = current===X ? 'Lượt của Người 1 (X)' : 'Lượt của Người 2 (O)';
+    }
+    sub.textContent = current===X ? 'đường mạch cyan' : 'đường mạch magenta';
+  }
+
+  function updateScoreUI(){
+    document.getElementById('scoreX').textContent = scores.x;
+    document.getElementById('scoreO').textContent = scores.o;
+    document.getElementById('scoreDraw').textContent = scores.draw;
+  }
+
+  function updateUndoBtn(){
+    document.getElementById('btnUndo').disabled = moves.length===0 || aiThinking;
+  }
+
+  function showWinOverlay(winner){
+    const overlay = document.getElementById('winOverlay');
+    const title = document.getElementById('winTitle');
+    const sub = document.getElementById('winSub');
+    if(winner===null){ title.textContent='HÒA CỜ!'; sub.textContent='không ai nhường ai'; }
+    else { title.textContent = (winner===X?'X':'O') + ' THẮNG!'; sub.textContent='năm quân một mạch'; }
+    overlay.classList.add('show');
+  }
+  function hideWinOverlay(){ document.getElementById('winOverlay').classList.remove('show'); }
+
+  document.getElementById('btnReplay').addEventListener('click', newGame);
+  document.getElementById('btnNew').addEventListener('click', newGame);
+  document.getElementById('btnResetScore').addEventListener('click', ()=>{
+    scores = {x:0,o:0,draw:0};
+    updateScoreUI();
+  });
+  document.getElementById('btnUndo').addEventListener('click', ()=>{
+    if(aiThinking || moves.length===0) return;
+    let toRemove = 1;
+    if(mode==='ai' && moves.length>=2 && moves[moves.length-1].player===O) toRemove=2;
+    for(let i=0;i<toRemove && moves.length>0;i++){
+      const last = moves.pop();
+      board[last.r][last.c]=EMPTY;
+    }
+    gameOver=false; winLine=null; hideWinOverlay();
+    current = moves.length ? (moves[moves.length-1].player===X?O:X) : X;
+    lastMoveAnim = moves.length ? {r:moves[moves.length-1].r,c:moves[moves.length-1].c,start:performance.now()} : null;
+    updateTurnUI(); updateUndoBtn(); draw();
+  });
+  document.getElementById('btnSound').addEventListener('click', (e)=>{
+    soundOn = !soundOn;
+    e.target.textContent = soundOn ? '🔊' : '🔇';
+  });
+
+  document.getElementById('zoomIn').addEventListener('click', ()=>setZoom(zoom+0.15));
+  document.getElementById('zoomOut').addEventListener('click', ()=>setZoom(zoom-0.15));
+  document.getElementById('zoomReset').addEventListener('click', ()=>setZoom(1));
+  function setZoom(z){
+    zoom = Math.min(1.6, Math.max(0.5, z));
+    scaleWrap.style.transform = 'scale('+zoom+')';
+    document.getElementById('zoomReset').textContent = Math.round(zoom*100)+'%';
+  }
+
+  function newGame(){
+    board = createBoard();
+    moves = [];
+    current = X;
+    gameOver = false;
+    winLine = null;
+    aiThinking = false;
+    lastMoveAnim = null;
+    document.getElementById('thinking').textContent = '';
+    hideWinOverlay();
+    updateTurnUI();
+    updateUndoBtn();
+    draw();
+  }
+
+  let audioCtx = null;
+  function ensureAudio(){
+    if(!audioCtx){ try{ audioCtx = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} }
+  }
+  function playClick(){
+    if(!soundOn) return;
+    ensureAudio(); if(!audioCtx) return;
+    const t = audioCtx.currentTime;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type='triangle';
+    osc.frequency.setValueAtTime(500,t);
+    osc.frequency.exponentialRampToValueAtTime(260,t+0.05);
+    gain.gain.setValueAtTime(0.12,t);
+    gain.gain.exponentialRampToValueAtTime(0.001,t+0.08);
+    osc.connect(gain).connect(audioCtx.destination);
+    osc.start(t); osc.stop(t+0.09);
+  }
+  function playWin(winner){
+    if(!soundOn) return;
+    ensureAudio(); if(!audioCtx) return;
+    const notes = winner===null ? [330,294,262] : [523,659,784];
+    notes.forEach((freq,i)=>{
+      const t = audioCtx.currentTime + i*0.11;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type='sine';
+      osc.frequency.setValueAtTime(freq,t);
+      gain.gain.setValueAtTime(0.001,t);
+      gain.gain.linearRampToValueAtTime(0.16,t+0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001,t+0.35);
+      osc.connect(gain).connect(audioCtx.destination);
+      osc.start(t); osc.stop(t+0.36);
+    });
+  }
+
+  setupCanvas();
+  updateTurnUI();
+  updateScoreUI();
+  updateUndoBtn();
+  updateModeSub();
+  draw();
+})();
+</script>
+</body>
+</html>
